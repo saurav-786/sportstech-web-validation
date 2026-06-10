@@ -1,0 +1,198 @@
+name: Deploy Reports to Vercel
+
+# Publishes the latest validation reports as a protected static site on Vercel.
+#
+# Triggers:
+#   1. Automatic: when the nightly "Website Validation" workflow finishes
+#      successfully on the default branch, the resulting
+#      `nightly-validation-reports` artifact is downloaded and deployed to
+#      production.
+#   2. Manual: a maintainer can dispatch this workflow with a chosen scan
+#      profile and target (preview vs production) — useful for ad-hoc snapshots
+#      or for verifying changes to deploy infrastructure without overwriting
+#      the live nightly snapshot.
+#
+# Required secrets (configured once in repo settings → Actions → Secrets):
+#   - VERCEL_TOKEN        — personal or team token with deploy permission
+#   - VERCEL_ORG_ID       — written to .vercel/project.json by `vercel link`
+#   - VERCEL_PROJECT_ID   — written to .vercel/project.json by `vercel link`
+# Optional:
+#   - ANTHROPIC_API_KEY / OPENAI_API_KEY — enables AI enrichment when a fresh
+#     scan is requested via manual dispatch.
+#
+# See docs/DEPLOYMENT.md for one-time project setup and access management.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_profile:
+        description: 'Scan profile to run before deploying'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke               # fast: ~8 pages, chromium only (~5 min)
+          - full                # equivalent to nightly: full crawl + lighthouse
+      target:
+        description: 'Vercel target environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+  workflow_run:
+    workflows: ['Website Validation']
+    types: [completed]
+
+concurrency:
+  # Serialize deploys so two runs can't race to publish.
+  group: deploy-reports-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Needed by actions/download-artifact@v4 when fetching from another workflow run.
+  actions: read
+
+jobs:
+  deploy:
+    name: Build and deploy reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    # Skip the workflow_run path when:
+    #   - upstream conclusion wasn't success (we never publish a failed scan)
+    #   - upstream was a PR (PR scans are partial — `nightly-validation-reports`
+    #     isn't produced on PR runs anyway, but be explicit)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event != 'pull_request'
+      )
+
+    env:
+      RESOLVED_PROFILE: ${{ github.event_name == 'workflow_run' && 'nightly-artifact' || inputs.scan_profile }}
+      RESOLVED_TARGET: ${{ github.event_name == 'workflow_run' && 'production' || inputs.target }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # ── Acquire reports/ ────────────────────────────────────────────────
+      # Two paths, mutually exclusive:
+
+      - name: Download nightly artifact (workflow_run trigger)
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-validation-reports
+          path: reports
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install npm dependencies (fresh scan)
+        if: github.event_name == 'workflow_dispatch'
+        run: npm ci
+
+      - name: Install Playwright browsers (fresh scan)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ inputs.scan_profile }}" = "smoke" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install --with-deps
+          fi
+
+      - name: Run fresh scan
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          BASE_URL: https://www.sportstech.de/
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -e
+          if [ "${{ inputs.scan_profile }}" = "smoke" ]; then
+            BROWSERS=chromium SUITE_MAX_PAGES=8 npm run test:smoke || \
+              echo "::warning::Smoke suite reported issues — continuing so reports still deploy"
+          else
+            MAX_PAGES=100 CRAWL_DEPTH=4 npm run scan || \
+              echo "::warning::Scan reported issues — continuing so reports still deploy"
+            npm run lighthouse || echo "::warning::Lighthouse step failed — continuing"
+            npm run pdf || echo "::warning::PDF step failed — continuing"
+          fi
+
+      # ── Build dist/ and deploy to Vercel ───────────────────────────────
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes \
+            --environment="${{ env.RESOLVED_TARGET == 'production' && 'production' || 'preview' }}" \
+            --token="$VERCEL_TOKEN"
+
+      - name: Build site (runs scripts/build-vercel-site.mjs via vercel.json)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          # Propagated into the build script's manifest.json
+          BASE_URL: https://www.sportstech.de/
+          SCAN_TYPE: ${{ env.RESOLVED_PROFILE }}
+          GITHUB_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          GITHUB_REF_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || github.run_id }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+        run: |
+          if [ "${{ env.RESOLVED_TARGET }}" = "production" ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Deploy prebuilt output to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ "${{ env.RESOLVED_TARGET }}" = "production" ]; then
+            url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          else
+            url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Deployment ready::$url"
+
+      - name: Write deployment summary
+        if: always()
+        run: |
+          {
+            echo "## Vercel deployment"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Profile | \`${{ env.RESOLVED_PROFILE }}\` |"
+            echo "| Target | \`${{ env.RESOLVED_TARGET }}\` |"
+            echo "| URL | ${{ steps.deploy.outputs.url || '(deploy step did not produce a URL)' }} |"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+            if [ "${{ github.event_name }}" = "workflow_run" ]; then
+              echo "| Upstream run | [${{ github.event.workflow_run.name }} #${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -2,6 +2,13 @@
 
 Enterprise-grade Playwright, TypeScript, axe-core, Lighthouse, k6, and AI-assisted website validation for `https://www.sportstech.de/`.
 
+> **Stakeholders:** the latest validation reports are published as a protected
+> static site on Vercel — no local install required. Authorized reviewers can
+> open the hosted URL, authenticate via Vercel Deployment Protection, and
+> browse every report (executive summary, SEO, accessibility, security,
+> performance, Lighthouse, Playwright). See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+> for access process, architecture, and one-time operator setup.
+
 ## What It Covers
 
 - Discovery crawler for pages, links, navigation, menus, forms, images, videos, carousels, tabs, accordions, popups, language switchers, and dynamic content signals.

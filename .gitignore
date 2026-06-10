@@ -5,3 +5,8 @@ test-results/
 playwright/.cache/
 dist/
 .auth/
+
+# Vercel CLI output — generated locally by `vercel pull` / `vercel build`.
+# Project linking (.vercel/project.json) is per-developer and should never
+# be committed; CI re-creates it from VERCEL_ORG_ID / VERCEL_PROJECT_ID.
+.vercel/
