@@ -1,0 +1,81 @@
+name: Website Validation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'   # nightly full crawl
+  pull_request:
+
+jobs:
+  pr-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Smoke suite
+        env:
+          BASE_URL: https://www.sportstech.de/
+          BROWSERS: chromium
+          SUITE_MAX_PAGES: '8'
+        run: npm run test:smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr-smoke-reports
+          path: |
+            reports
+            test-results
+          retention-days: 7
+
+  nightly-full-crawl:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      # Persist trend history between nightly runs
+      - name: Restore trend history
+        uses: actions/cache@v4
+        with:
+          path: reports/history
+          key: trend-history-${{ github.run_id }}
+          restore-keys: trend-history-
+      - name: Full crawl + validation scan
+        env:
+          BASE_URL: https://www.sportstech.de/
+          MAX_PAGES: '100'
+          CRAWL_DEPTH: '4'
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run scan
+      - name: Lighthouse audit
+        if: always()
+        run: npm run lighthouse
+      - name: Executive PDF
+        if: always()
+        run: npm run pdf
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-validation-reports
+          path: |
+            reports
+            test-results
+          retention-days: 30
+      - name: Notify on failure
+        if: failure() && env.SLACK_WEBHOOK != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"❌ Nightly website validation failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$SLACK_WEBHOOK"

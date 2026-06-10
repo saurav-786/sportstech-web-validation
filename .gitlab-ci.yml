@@ -1,0 +1,64 @@
+# GitLab CI: MR smoke, nightly full crawl, weekly deep scans.
+# Schedules (CI/CD → Schedules): nightly cron "0 2 * * *" with SCAN_TYPE=full,
+# weekly "0 3 * * 1" with SCAN_TYPE=deep. Set ANTHROPIC_API_KEY/OPENAI_API_KEY as masked variables.
+image: mcr.microsoft.com/playwright:v1.52.0-jammy
+
+stages: [validate, report]
+
+default:
+  before_script:
+    - npm ci
+  cache:
+    key: { files: [package-lock.json] }
+    paths: [.npm/]
+
+.artifacts: &artifacts
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [reports/, test-results/]
+
+mr-smoke:
+  stage: validate
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables: { BROWSERS: chromium, SUITE_MAX_PAGES: '8' }
+  script:
+    - npm run test:smoke
+  <<: *artifacts
+
+nightly-full:
+  stage: validate
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCAN_TYPE == "full"
+  variables: { MAX_PAGES: '100', CRAWL_DEPTH: '4', CRAWL_CONCURRENCY: '6' }
+  script:
+    - npm run scan
+    - npm run lighthouse
+    - npm run pdf
+  <<: *artifacts
+
+weekly-deep:
+  stage: validate
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCAN_TYPE == "deep"
+  parallel:
+    matrix:
+      - SUITE: [seo, security, performance, a11y]
+  variables: { SUITE_MAX_PAGES: '25', BROWSERS: chromium }
+  script:
+    - npm run test:$SUITE
+    - OPEN_REPORT=0 npm run report:suites
+  <<: *artifacts
+
+notify-failure:
+  stage: report
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: on_failure
+  script:
+    - |
+      if [ -n "$SLACK_WEBHOOK" ]; then
+        curl -s -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"❌ Website validation pipeline failed: $CI_PIPELINE_URL\"}" "$SLACK_WEBHOOK"
+      fi

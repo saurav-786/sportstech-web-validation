@@ -1,0 +1,59 @@
+name: Weekly Deep Scan (SEO / Security / Performance / A11y)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'   # Mondays 03:00 UTC
+
+jobs:
+  deep-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [seo, security, performance, a11y]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - name: Run ${{ matrix.suite }} suite
+        env:
+          BASE_URL: https://www.sportstech.de/
+          SUITE_MAX_PAGES: '25'
+          BROWSERS: chromium
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run test:${{ matrix.suite }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-${{ matrix.suite }}-reports
+          path: |
+            reports
+            test-results
+          retention-days: 90
+
+  cross-browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - name: Smoke on chromium + firefox + webkit
+        env:
+          BASE_URL: https://www.sportstech.de/
+          BROWSERS: chromium,firefox,webkit
+          SUITE_MAX_PAGES: '10'
+        run: npm run test:smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-crossbrowser-reports
+          path: reports
+          retention-days: 90
