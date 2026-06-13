@@ -13,16 +13,26 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+        with:
+          node-version: 22
+          cache: npm
+
+      # Fail fast: if npm ci fails, nothing below should run.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
       - name: Smoke suite
         env:
           BASE_URL: https://www.sportstech.de/
           BROWSERS: chromium
           SUITE_MAX_PAGES: '8'
         run: npm run test:smoke
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -38,10 +48,21 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npx playwright install --with-deps
+        with:
+          node-version: 22
+          cache: npm
+
+      # Fail fast: surface dependency errors before any subsequent step runs.
+      # Optional packages (bullmq/ioredis) may warn but must not abort the
+      # install — they require an external Redis server not present in CI.
+      - name: Install dependencies
+        run: npm ci --omit=optional
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
       # Persist trend history between nightly runs
       - name: Restore trend history
         uses: actions/cache@v4
@@ -49,6 +70,7 @@ jobs:
           path: reports/history
           key: trend-history-${{ github.run_id }}
           restore-keys: trend-history-
+
       - name: Full crawl + validation scan
         env:
           BASE_URL: https://www.sportstech.de/
@@ -57,12 +79,17 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: npm run scan
+
+      # Run even if the crawl reports test failures, but NOT if npm ci failed
+      # (guarded by the job-level step ordering — no if: always() here).
       - name: Lighthouse audit
-        if: always()
+        if: success() || steps.install.outcome == 'success'
         run: npm run lighthouse
+
       - name: Executive PDF
-        if: always()
+        if: success() || steps.install.outcome == 'success'
         run: npm run pdf
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -71,6 +98,7 @@ jobs:
             reports
             test-results
           retention-days: 30
+
       - name: Notify on failure
         if: failure() && env.SLACK_WEBHOOK != ''
         env:
