@@ -19,6 +19,12 @@ node_modules/
 .auth/
 test-results/
 playwright/.cache/
+# Raw Playwright reports contain trace ZIPs larger than Vercel's 100 MB
+# per-file upload limit. The dashboard deploys a compressed evidence subset
+# generated under public/artifacts/ instead.
+reports/playwright-report/
+reports/revenue-runs/*/playwright-report/
+reports/*.zip
 # Local environment — must never ship.
 .env
 .env.*
