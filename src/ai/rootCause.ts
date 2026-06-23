@@ -1,6 +1,7 @@
 import { appConfig } from '../config.js';
 import type { ValidationIssue } from '../types.js';
 import { classifyIssue, issueSignature } from './analyzer.js';
+import { classifyValidationIssue } from './failureClassification.js';
 import { completeJson, parseJsonResponse } from './provider.js';
 
 /**
@@ -11,6 +12,7 @@ export async function enrichIssuesWithAi(issues: ValidationIssue[]): Promise<Val
   const classified = issues.map((issue) => ({
     ...issue,
     failureClass: issue.failureClass ?? classifyIssue(issue),
+    ...classifyValidationIssue(issue),
     signature: issue.signature ?? issueSignature(issue)
   }));
   if (!appConfig.useAi || classified.length === 0) return classified;

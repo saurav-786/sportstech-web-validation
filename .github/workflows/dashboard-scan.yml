@@ -1,0 +1,101 @@
+name: Dashboard Managed Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: Scan profile requested by the quality dashboard
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - pdp-cart
+          - revenue
+          - lighthouse
+          - seo
+          - accessibility
+          - performance
+          - smoke
+          - regression
+
+concurrency:
+  group: dashboard-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  scan-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BASE_URL: https://www.sportstech.de/
+      PAYMENT_MODE: boundary
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install browser runtime
+        run: npx playwright install --with-deps
+
+      - name: Execute selected profile
+        shell: bash
+        run: |
+          set +e
+          case "${{ inputs.scan_type }}" in
+            full) npm run validate:chromium ;;
+            pdp-cart) npm run test:pdp-cart:fast ;;
+            revenue) npm run revenue:full ;;
+            lighthouse) npm run lighthouse ;;
+            seo) npm run test:seo ;;
+            accessibility) npm run test:a11y ;;
+            performance) npm run test:performance ;;
+            smoke) npm run test:smoke ;;
+            regression) BROWSERS=chromium playwright test tests/regression ;;
+          esac
+          scan_code=$?
+          npm run report:suites || true
+          npm run revenue:report || true
+          echo "SCAN_EXIT_CODE=$scan_code" >> "$GITHUB_ENV"
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-latest-reports
+          path: |
+            reports
+            test-results
+          retention-days: 90
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Publish refreshed dashboard
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Execution summary
+        if: always()
+        run: |
+          {
+            echo "## Dashboard scan"
+            echo ""
+            echo "- Profile: \`${{ inputs.scan_type }}\`"
+            echo "- Automation exit code: \`${SCAN_EXIT_CODE:-unknown}\`"
+            echo "- Reports were preserved and published even when validation found defects."
+          } >> "$GITHUB_STEP_SUMMARY"

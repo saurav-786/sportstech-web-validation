@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f6f8fc;
+  --foreground: #111827;
+  --muted: #65718a;
+  --border: #dfe5ef;
+  --indigo: #1e1b7a;
+  --purple: #6d43ee;
+  --blue: #1769ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 42% -15%, rgba(108, 91, 255, .08), transparent 26rem),
+    var(--background);
+  color: var(--foreground);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(109, 67, 238, .2);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd3e1;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.card-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.panel-title {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+
+.micro-label {
+  color: #71809b;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+.chart-tooltip {
+  border: 1px solid #dfe5ef !important;
+  border-radius: 9px !important;
+  box-shadow: 0 12px 30px rgba(30, 27, 122, .12) !important;
+  font-size: 11px !important;
+}
+
+.skeleton {
+  animation: pulse 1.7s ease-in-out infinite;
+  background: linear-gradient(90deg, #eef1f7, #f8f9fc, #eef1f7);
+  background-size: 200% 100%;
+}
+
+@keyframes pulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

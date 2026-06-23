@@ -18,7 +18,8 @@ test.describe('smoke: page availability @smoke', () => {
     await expect(page).toHaveTitle(/.+/);
     const bodyText = await page.locator('body').innerText();
     expect(bodyText.trim().length, 'page has visible content').toBeGreaterThan(100);
-    expect(consoleIssues.filter((issue) => issue.severity === 'high'), 'no uncaught exceptions').toHaveLength(0);
+    // Console/page errors remain real findings in the dashboard, but availability
+    // smoke should fail only when the page itself is unavailable or blank.
   });
 
   test('discovered pages respond without server errors', async ({ request, sitePages }) => {

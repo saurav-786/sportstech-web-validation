@@ -1,13 +1,45 @@
 # AI Website Validation Platform
 
-Enterprise-grade Playwright, TypeScript, axe-core, Lighthouse, k6, and AI-assisted website validation for `https://www.sportstech.de/`.
+Enterprise-grade Playwright, TypeScript, axe-core, Lighthouse, k6, AI-assisted website validation, and a production Next.js 15 quality-intelligence dashboard for `https://www.sportstech.de/`.
 
-> **Stakeholders:** the latest validation reports are published as a protected
-> static site on Vercel — no local install required. Authorized reviewers can
-> open the hosted URL, authenticate via Vercel Deployment Protection, and
-> browse every report (executive summary, SEO, accessibility, security,
-> performance, Lighthouse, Playwright). See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
-> for access process, architecture, and one-time operator setup.
+> **Stakeholders:** the latest artifacts are normalized into the Sportstech AI
+> Quality Intelligence Dashboard and published on Vercel. Google OAuth,
+> role-based scan execution, reports, evidence, revenue analytics, and AI RCA
+> are available from one URL. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+## Quality Intelligence Dashboard
+
+```bash
+npm ci
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+`npm run dev` first creates a compact dashboard snapshot from the real files in
+`reports/` and `test-results/`. To refresh it without restarting:
+
+```bash
+npm run dashboard:prepare
+```
+
+Main routes:
+
+- `/` — executive dashboard
+- `/website-testing` — managed scan launcher and device matrix
+- `/ai-rca` — evidence-grounded root causes
+- `/reports` — HTML/PDF/JSON/CSV report library
+- `/revenue-analytics` — conversion and revenue-risk intelligence
+- `/support-intelligence` — support-facing issue signals
+- `/lighthouse` — measured Lighthouse categories
+- `/evidence` — screenshot and artifact center
+- `/settings` — integration health and metric provenance
+
+The dashboard never substitutes demo values for missing report data. Missing
+Lighthouse scores remain unavailable, and monetary revenue impact is disabled
+until a complete verified business dataset is connected.
+
+Repository audit: [`docs/REPOSITORY_ANALYSIS.md`](docs/REPOSITORY_ANALYSIS.md).
 
 ## What It Covers
 
@@ -100,6 +132,45 @@ npm run report
 - `reports/lighthouse-report.html`
 - `reports/image-validation-report.html`
 - `reports/executive-summary.pdf`
+- `reports/revenue-dashboard.html` and `reports/revenue-report.pdf`
+- `reports/investigation-report.html` and `reports/investigation-report.pdf`
+
+## Revenue Conversion Investigation
+
+Run the boundary-safe ecommerce journey, calculate conversion/revenue health,
+and generate both the HTML dashboard and downloadable PDF:
+
+```bash
+npm run revenue
+```
+
+Run the full device matrix plus PDP media checks and generate the consolidated
+incident investigation in HTML, Markdown, and PDF:
+
+```bash
+npm run investigate:full
+```
+
+Regenerate PDFs from existing HTML artifacts without rerunning tests:
+
+```bash
+npm run pdf
+npm run pdf:revenue
+npm run pdf:investigation
+```
+
+Revenue and conversion scores come from the current Playwright journey run.
+They are not business conversion-rate metrics. Monetary exposure is disabled
+unless a complete verified dataset (sessions/day, AOV, and actual CR) is
+connected through `REVENUE_BUSINESS_METRICS_URL`,
+`REVENUE_BUSINESS_DATA_PATH`, or explicit environment variables. Without it,
+the report states:
+
+> Business revenue estimate unavailable because live Shopware/analytics data is not connected.
+
+Each execution writes isolated evidence under
+`reports/revenue-runs/<run-id>/`, preventing concurrent or stale runs from
+being mixed into the dashboard.
 
 ## Configuration
 

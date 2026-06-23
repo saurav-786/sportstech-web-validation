@@ -8,6 +8,7 @@ import { writeSiteReports } from '../reports/siteReport.js';
 import type { FailureClass, PageValidationResult, RunStats, ScrollMetrics, TestFailure, ValidationIssue } from '../types.js';
 import { readJson } from '../utils/fs.js';
 import { createLogger } from '../utils/logger.js';
+import { classifyTestFailure } from '../ai/failureClassification.js';
 
 const log = createLogger('suite-report');
 
@@ -26,32 +27,6 @@ interface PwSpec { title: string; tests: PwTest[]; }
 interface PwSuite { title: string; specs?: PwSpec[]; suites?: PwSuite[]; }
 interface PwReport { suites?: PwSuite[]; stats?: { expected: number; unexpected: number; flaky: number; skipped: number; duration: number }; }
 
-function selfHealingAdvice(error: string): { failureClass: FailureClass; advice: string } {
-  const text = error.toLowerCase();
-  if (/tohavescreenshot|screenshot comparison|pixels.*differ|expected an image/.test(text)) {
-    return { failureClass: 'frontend', advice: 'Visual drift detected. Review the diff in the trace; if the change is intentional run "npm run test:visual:update" to refresh baselines. If a carousel/animation caused it, extend the masked selectors in visual.spec.ts.' };
-  }
-  if (/strict mode violation/.test(text)) {
-    return { failureClass: 'frontend', advice: 'Locator matches multiple elements. Heal by scoping with a role/name locator (page.getByRole) or .first(); avoid bare CSS classes.' };
-  }
-  if (/timeout.*waiting for|waiting for locator|locator.*not found|element.*not found/.test(text)) {
-    return { failureClass: 'frontend', advice: 'Selector no longer matches the DOM. Heal by switching to resilient locators (getByRole/getByLabel/getByTestId) and adding data-testid attributes for unstable elements.' };
-  }
-  if (/not visible|intercepts pointer|element is outside of the viewport/.test(text)) {
-    return { failureClass: 'frontend', advice: 'Element obscured by overlay/cookie banner. Heal by calling dismissOverlays() before interaction or scrollIntoViewIfNeeded().' };
-  }
-  if (/net::err|econnrefused|enotfound|dns|proxy|tunnel|browser has been closed/.test(text)) {
-    return { failureClass: 'environment', advice: 'Network/environment failure, not a product bug. Verify connectivity/BASE_URL; rely on CI retries; consider raising REQUEST_TIMEOUT_MS.' };
-  }
-  if (/timeout|exceeded/.test(text)) {
-    return { failureClass: 'flaky', advice: 'Timing-sensitive failure. Heal by replacing fixed waits with web-first assertions (expect(locator).toBeVisible()) and raising the per-test timeout only if the page is legitimately slow.' };
-  }
-  if (/5\d\d|internal server error/.test(text)) {
-    return { failureClass: 'backend', advice: 'Server-side error. Route to the backend team with the trace; add an API-level monitor for this endpoint.' };
-  }
-  return { failureClass: 'frontend', advice: 'Inspect the attached trace (View Trace) for the failing step; convert brittle steps to role-based locators and web-first assertions.' };
-}
-
 function collectFailures(suite: PwSuite, path: string[], failures: TestFailure[], browsers: Set<string>): void {
   for (const spec of suite.specs ?? []) {
     for (const test of spec.tests) {
@@ -60,13 +35,21 @@ function collectFailures(suite: PwSuite, path: string[], failures: TestFailure[]
       const failed = test.status === 'unexpected' || lastResult?.status === 'failed' || lastResult?.status === 'timedOut';
       if (failed) {
         const error = lastResult?.error?.message ?? lastResult?.errors?.[0]?.message ?? 'Unknown error';
-        const { failureClass, advice } = selfHealingAdvice(error);
+        const testName = [...path, suite.title, spec.title].filter(Boolean).join(' › ');
+        const classification = classifyTestFailure(testName, error, test.projectName ?? 'unknown');
         failures.push({
-          test: [...path, suite.title, spec.title].filter(Boolean).join(' › '),
+          test: testName,
           browser: test.projectName ?? 'unknown',
           error: error.replace(/\[\d+m/g, '').slice(0, 500),
-          failureClass,
-          selfHealing: advice
+          evidence: error.replace(/\[\d+m/g, '').slice(0, 500),
+          failureClass: classification.failureClass,
+          failureCategory: classification.failureCategory,
+          rootCause: classification.rootCause,
+          codeFixNeeded: classification.codeFixNeeded,
+          websiteFixNeeded: classification.websiteFixNeeded,
+          severity: classification.severity,
+          confidence: classification.confidence,
+          selfHealing: classification.advice,
         });
       }
     }

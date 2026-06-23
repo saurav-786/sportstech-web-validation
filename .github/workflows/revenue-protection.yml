@@ -1,0 +1,68 @@
+name: Revenue Protection
+
+# Runs the ecommerce purchase journey across a device matrix, aggregates the
+# Conversion Health, Revenue Impact, AI Root Cause and Deployment Correlation
+# layers, and publishes the executive Revenue dashboard as an artifact.
+#
+# This is ADDITIVE — it does not touch the existing PR smoke / nightly / weekly
+# workflows. Money-path policy is boundary-safe by default (PAYMENT_MODE=boundary):
+# journeys validate up to the payment step but never submit a real order.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_matrix:
+        description: 'Run the full mobile/desktop device matrix'
+        required: true
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours — revenue path is high-stakes
+
+jobs:
+  revenue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # git history for deployment markers
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run revenue purchase journeys
+        env:
+          BASE_URL: https://www.sportstech.de/
+          PAYMENT_MODE: boundary
+          REVENUE_MATRIX: ${{ github.event.inputs.device_matrix == 'true' && '1' || '0' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run test:revenue || true   # never let a P0 abort report generation
+
+      - name: Aggregate Revenue dashboard
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run revenue:report
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: revenue-protection-reports
+          path: |
+            reports/revenue-dashboard.html
+            reports/revenue-health.json
+            reports/revenue-rca.json
+            reports/journeys
+            reports/playwright-report
+          retention-days: 90

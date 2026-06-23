@@ -38,13 +38,22 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   test.setTimeout(scanTimeoutMs);
   if (allResults.length === 0) {
-    await writeSiteReports([], [{
-      area: 'ui',
-      severity: 'critical',
-      pageUrl: appConfig.baseUrl,
-      summary: 'Scan completed without page validation results.',
-      suggestedFix: 'Check discovery and navigation timeouts, then rerun the scan.'
-    }]);
+    // writeSiteReports(results, pages, ...) — the 2nd arg is DiscoveredPage[].
+    // Surface the "no results" critical via a single result so it reaches the
+    // dashboard, instead of passing an issue where pages are expected.
+    await writeSiteReports([{
+      url: appConfig.baseUrl,
+      browserName: 'chromium',
+      passed: false,
+      metrics: {},
+      issues: [{
+        area: 'ui',
+        severity: 'critical',
+        pageUrl: appConfig.baseUrl,
+        summary: 'Scan completed without page validation results.',
+        suggestedFix: 'Check discovery and navigation timeouts, then rerun the scan.'
+      }]
+    }], []);
     return;
   }
 

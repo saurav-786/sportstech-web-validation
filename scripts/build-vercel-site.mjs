@@ -40,6 +40,8 @@ const KNOWN_REPORTS = [
     ['dashboard.html', 'Main Dashboard', 'Severity-ranked defects, heat maps, AI summary, trends'],
     ['executive-dashboard.html', 'Executive Summary', 'High-level release-readiness verdict and blockers'],
     ['dashboard-shareable.html', 'Shareable Snapshot', 'Self-contained single-file dashboard for email / Teams'],
+    ['revenue-dashboard.html', 'Revenue & Conversion', 'Conversion funnel, revenue health, quantified risks, and AI RCA'],
+    ['investigation-report.html', 'Incident Investigation', 'Executive incident findings, hypotheses, evidence, and recommendations'],
     ['website-map.html', 'Website Map', 'Discovered pages, navigation, and categorization'],
     ['seo-report.html', 'SEO Report', 'Titles, descriptions, canonicals, structured data, sitemap'],
     ['accessibility-report.html', 'Accessibility Report', 'WCAG 2.1 A/AA findings with axe-core severity'],
@@ -53,6 +55,8 @@ const KNOWN_REPORTS = [
     ['page-exploration-report.html', 'Page Exploration', 'Scroll engine coverage and per-page screenshots'],
     ['playwright-report/index.html', 'Playwright Test Report', 'Raw test results: traces, screenshots, videos'],
     ['executive-summary.pdf', 'Executive PDF', 'Printable executive summary'],
+    ['revenue-report.pdf', 'Revenue PDF', 'Downloadable revenue and conversion protection report'],
+    ['investigation-report.pdf', 'Investigation PDF', 'Downloadable incident investigation report'],
 ];
 
 async function main() {

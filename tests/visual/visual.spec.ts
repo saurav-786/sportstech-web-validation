@@ -14,13 +14,16 @@ test.describe('visual regression @visual', () => {
     test.skip(keyPages.length === 0, 'no key pages discovered');
 
     for (const discovered of keyPages) {
-      await page.goto(discovered.url, { waitUntil: 'load', timeout: appConfig.requestTimeoutMs });
+      await page.goto(discovered.url, { waitUntil: 'domcontentloaded', timeout: appConfig.requestTimeoutMs });
       await dismissOverlays();
       // Neutralize animation/carousel noise before comparing
-      await page.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; } [class*="carousel"], [class*="slider"], .swiper, video { visibility: hidden !important; }' });
-      await page.waitForTimeout(800);
+      await page.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; } [class*="carousel"], [class*="slider"], .swiper, video { visibility: hidden !important; }' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.locator('img').first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => undefined);
       await expect(page).toHaveScreenshot(`${safeFileName(discovered.url)}.png`, {
         fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
         maxDiffPixelRatio: Number(process.env.VISUAL_MAX_DIFF ?? 0.02),
         timeout: 15_000
       });

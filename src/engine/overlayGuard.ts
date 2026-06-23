@@ -34,7 +34,10 @@ const cmpAcceptSelectors = [
   '.cc-allow',
   '.cookie-accept, #cookie-accept, .cookie-consent-accept, .js-accept-cookies',
   'a._brlbs-btn-accept, .borlabs-cookie-btn-accept-all',
-  'button[mode="primary"][data-role="all"]'
+  'button[mode="primary"][data-role="all"]',
+  '#ccm-widget button:has-text("Akzeptieren")',
+  '.ccm-widget button:has-text("Akzeptieren")',
+  '.ccm-root button:has-text("Akzeptieren")'
 ];
 
 // Accept-style accessible names (case-insensitive substring). German first (matches sportstech.de).

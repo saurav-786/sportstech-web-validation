@@ -4,13 +4,13 @@ import type { ValidationIssue, WebVitals } from '../types.js';
 import { issue } from '../validators/common.js';
 
 declare global {
-  interface Window { __pwVitals?: { lcp: number; cls: number; tbt: number } }
+  interface Window { __pwVitals?: { lcp: number; cls: number; tbt: number; inp: number } }
 }
 
-/** Install observers before navigation so LCP/CLS/long-task data is captured. */
+/** Install observers before navigation so LCP/CLS/long-task/INP data is captured. */
 export async function installVitalsObservers(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const vitals = { lcp: 0, cls: 0, tbt: 0 };
+    const vitals = { lcp: 0, cls: 0, tbt: 0, inp: 0 };
     window.__pwVitals = vitals;
     try {
       new PerformanceObserver((list) => {
@@ -29,6 +29,15 @@ export async function installVitalsObservers(page: Page): Promise<void> {
           if (entry.duration > 50) vitals.tbt += entry.duration - 50;
         }
       }).observe({ type: 'longtask', buffered: true });
+      // INP approximation: worst interaction latency from event-timing entries.
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries() as PerformanceEntry[]) {
+            const dur = (entry as PerformanceEntry & { duration: number }).duration;
+            if (dur > vitals.inp) vitals.inp = dur;
+          }
+        }).observe({ type: 'event', buffered: true, durationThreshold: 16 } as PerformanceObserverInit);
+      } catch { /* event-timing unsupported */ }
     } catch { /* unsupported browser */ }
   });
 }
@@ -48,11 +57,14 @@ export async function collectWebVitals(page: Page): Promise<WebVitals> {
     const renderBlocking = resources.filter((r) =>
       (r as PerformanceResourceTiming & { renderBlockingStatus?: string }).renderBlockingStatus === 'blocking').length;
     const vitals = window.__pwVitals;
+    const ttfb = nav ? nav.responseStart : undefined;
     return {
       fcpMs: paint ? Math.round(paint.startTime) : undefined,
       lcpMs: vitals?.lcp ? Math.round(vitals.lcp) : undefined,
       cls: vitals ? Math.round(vitals.cls * 1000) / 1000 : undefined,
       tbtMs: vitals ? Math.round(vitals.tbt) : undefined,
+      inpMs: vitals?.inp ? Math.round(vitals.inp) : undefined,
+      ttfbMs: ttfb !== undefined ? Math.round(ttfb) : undefined,
       ttiMs: nav ? Math.round(nav.domInteractive) : undefined,
       domContentLoadedMs: nav ? Math.round(nav.domContentLoadedEventEnd) : undefined,
       loadMs: nav ? Math.round(nav.loadEventEnd) : undefined,
@@ -72,6 +84,8 @@ export function vitalsToIssues(vitals: WebVitals, pageUrl: string): ValidationIs
   if (over(vitals.lcpMs, budgets.lcpMs)) issues.push(issue('performance', vitals.lcpMs! > budgets.lcpMs * 1.6 ? 'high' : 'medium', pageUrl, `LCP ${vitals.lcpMs}ms exceeds ${budgets.lcpMs}ms budget.`, 'Optimize hero image/preload critical assets; reduce server response time.'));
   if (over(vitals.fcpMs, budgets.fcpMs)) issues.push(issue('performance', 'medium', pageUrl, `FCP ${vitals.fcpMs}ms exceeds ${budgets.fcpMs}ms budget.`, 'Inline critical CSS and defer non-essential scripts.'));
   if (over(vitals.cls, budgets.cls)) issues.push(issue('performance', vitals.cls! > 0.25 ? 'high' : 'medium', pageUrl, `CLS ${vitals.cls} exceeds ${budgets.cls} budget.`, 'Reserve space for images, ads, embeds, and web fonts.'));
+  if (over(vitals.inpMs, appConfig.revenue.inpBudgetMs)) issues.push(issue('performance', vitals.inpMs! > appConfig.revenue.inpBudgetMs * 2.5 ? 'high' : 'medium', pageUrl, `INP ${vitals.inpMs}ms exceeds ${appConfig.revenue.inpBudgetMs}ms budget.`, 'Reduce main-thread work on interactions; break up long event handlers.'));
+  if (over(vitals.ttfbMs, appConfig.revenue.ttfbBudgetMs)) issues.push(issue('performance', vitals.ttfbMs! > appConfig.revenue.ttfbBudgetMs * 2 ? 'high' : 'medium', pageUrl, `TTFB ${vitals.ttfbMs}ms exceeds ${appConfig.revenue.ttfbBudgetMs}ms budget.`, 'Improve server response time, edge caching, or origin latency.'));
   if (over(vitals.tbtMs, budgets.tbtMs)) issues.push(issue('performance', 'medium', pageUrl, `TBT ${vitals.tbtMs}ms exceeds ${budgets.tbtMs}ms budget.`, 'Split long JavaScript tasks; defer third-party scripts.'));
   if (over(vitals.loadMs, budgets.loadMs)) issues.push(issue('performance', 'medium', pageUrl, `Full load ${vitals.loadMs}ms exceeds ${budgets.loadMs}ms budget.`, 'Reduce payload and request count.'));
   if (over(vitals.transferKb, budgets.transferKb)) issues.push(issue('performance', 'low', pageUrl, `Page weight ${vitals.transferKb}KB exceeds ${budgets.transferKb}KB budget.`, 'Compress images (WebP/AVIF), minify bundles, enable HTTP compression.'));

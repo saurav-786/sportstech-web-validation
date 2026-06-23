@@ -1,184 +1,159 @@
-vercel link                        # interactive — name the project,
-# confirm the team, accept defaults.
-# Writes .vercel/project.json locally.
+# Sportstech Quality Intelligence Deployment
+
+The dashboard is a Next.js 15 application deployed to Vercel. Long-running browser automation does not execute inside a Vercel request. The UI dispatches the managed GitHub Actions workflow, which runs the existing suites, preserves artifacts, builds a compact dashboard snapshot, and publishes the refreshed application.
+
+## Runtime architecture
+
+```mermaid
+flowchart LR
+  User["Dashboard user"] --> Vercel["Next.js dashboard on Vercel"]
+  Vercel --> API["POST /api/scans"]
+  API --> Workflow["Dashboard Managed Scan workflow"]
+  Workflow --> Tests["Existing Playwright / Lighthouse suites"]
+  Tests --> Reports["reports/ + test-results/"]
+  Reports --> Prepare["prepare-dashboard-assets.ts"]
+  Prepare --> Deploy["Vercel production deployment"]
+  Deploy --> Vercel
 ```
 
-After `vercel link`, capture the values for the GitHub secrets:
+## Requirements
+
+- Node.js 22
+- A Vercel project linked to this repository
+- GitHub Actions enabled
+- Google OAuth credentials when application authentication is required
+- A fine-grained GitHub token for dashboard-triggered scans
+
+## Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `AUTH_SECRET` | Production auth | Auth.js session signing secret |
+| `AUTH_GOOGLE_ID` | When Google OAuth is enabled | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | When Google OAuth is enabled | Google OAuth client secret |
+| `DASHBOARD_AUTH_REQUIRED` | Recommended | Set `true` in production |
+| `DASHBOARD_ADMIN_EMAILS` | Optional | Comma-separated administrator emails |
+| `DASHBOARD_ROLE_MAP` | Optional | `email:role` mappings |
+| `GITHUB_WORKFLOW_TOKEN` | Run Scan action | Fine-grained token with Actions read/write |
+| `GITHUB_REPOSITORY` | Run Scan action | `owner/repository` |
+| `GITHUB_WORKFLOW_REF` | Optional | Branch used for dispatch; defaults to `main` |
+| `VERCEL_TOKEN` | CI deployment | Vercel deployment token |
+| `VERCEL_ORG_ID` | CI deployment | Vercel team or account ID |
+| `VERCEL_PROJECT_ID` | CI deployment | Linked project ID |
+| `ANTHROPIC_API_KEY` | Optional | AI enrichment |
+| `OPENAI_API_KEY` | Optional | AI enrichment |
+
+Roles supported by `DASHBOARD_ROLE_MAP` are `admin`, `qa`, `product`, `support`, `sales`, and `marketing`.
+
+## Google OAuth
+
+1. Create a Web OAuth client in Google Cloud.
+2. Add `https://<dashboard-domain>/api/auth/callback/google` as an authorized redirect URI.
+3. Add `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and a generated `AUTH_SECRET` to Vercel.
+4. Set `DASHBOARD_AUTH_REQUIRED=true`.
+5. Configure admin emails or explicit role mappings.
+
+Local development may use `DASHBOARD_AUTH_REQUIRED=false`.
+
+## Vercel setup
 
 ```bash
+npm ci
+vercel link
 cat .vercel/project.json
-# { "orgId": "team_xxx...", "projectId": "prj_xxx..." }
 ```
 
-### 2. Configure GitHub Actions secrets
+Copy the resulting `orgId` and `projectId` into GitHub Actions secrets as `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. Add `VERCEL_TOKEN`.
 
-In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**.
+The project build settings are repository-controlled:
 
-| Secret | Value | Required |
-| --- | --- | --- |
-| `VERCEL_TOKEN` | Token from <https://vercel.com/account/tokens> (scope: full or limited to this project) | Yes |
-| `VERCEL_ORG_ID` | `orgId` from `.vercel/project.json` | Yes |
-| `VERCEL_PROJECT_ID` | `projectId` from `.vercel/project.json` | Yes |
-| `ANTHROPIC_API_KEY` | Claude API key | Optional (AI enrichment) |
-| `OPENAI_API_KEY` | OpenAI API key | Optional (AI enrichment) |
-| `SLACK_WEBHOOK` | Slack webhook for failure notifications | Optional |
+- Framework: Next.js
+- Install: `npm ci`
+- Build: `npm run build`
+- Runtime region: Frankfurt (`fra1`)
 
-### 3. Enable Deployment Protection (see next section)
+`npm run build` executes `scripts/prepare-dashboard-assets.ts` before `next build`. This produces:
 
-### 4. Verify
+- `public/dashboard-snapshot.json`
+- a curated `public/artifacts/` subset containing stakeholder-facing reports and compressed evidence
 
-Trigger a manual deploy to confirm the pipeline works end-to-end:
+The raw multi-gigabyte Playwright archive remains in GitHub Actions artifacts and is not packed into Vercel functions.
 
-1. GitHub UI → **Actions** → **Deploy Reports to Vercel** → **Run workflow**.
-2. Inputs: `scan_profile=smoke`, `target=preview`.
-3. Wait ~5–8 minutes.
-4. Open the preview URL printed in the workflow summary. You should be
-   challenged by Deployment Protection, then see the landing page.
+## Managed scan setup
 
-If everything works, the next nightly run (02:00 UTC) will publish to
-production automatically.
+Create a fine-grained GitHub token scoped only to this repository:
 
----
+- Repository permissions → Actions: Read and write
+- Repository metadata: Read
 
-## Authentication configuration
+Add it to Vercel as `GITHUB_WORKFLOW_TOKEN`, along with `GITHUB_REPOSITORY`. The dashboard dispatches `.github/workflows/dashboard-scan.yml`.
 
-We use **Vercel Deployment Protection** rather than building application-level
-authentication. This means no auth code, no NextAuth/Clerk to maintain, no
-session management — Vercel enforces auth at the edge before any static file
-is served.
+Supported UI profiles:
 
-### Option 1 (preferred): Vercel Authentication
+- Full website
+- PDP and add-to-cart
+- Revenue protection
+- Lighthouse
+- SEO
+- Accessibility
+- Performance
+- Smoke
+- Regression
 
-Best for internal reviewers who already have (or can have) a Vercel account
-on your team.
+The payment boundary remains safe: no real order is submitted unless an explicit sandbox is configured.
 
-1. Open the project in the Vercel dashboard.
-2. **Settings → Deployment Protection → Vercel Authentication**.
-3. Choose protection scope:
-    - **Standard Protection** — protects all preview deployments and
-      production. Recommended for an internal-only review site.
-    - **All Deployments** — protects every URL including aliases.
-4. Save.
+## Deploy
 
-Reviewers must be either:
-- Members of the Vercel team that owns this project, **or**
-- Added as Project Members (Vercel Pro: under **Settings → Members**), **or**
-- Invited via Shareable Links (time-limited URLs that bypass team membership).
-
-### Option 2: Password Protection
-
-Best for external reviewers (auditors, agency stakeholders) who shouldn't be
-added to the Vercel team.
-
-1. Vercel dashboard → project → **Settings → Deployment Protection →
-   Password Protection**.
-2. Set a password. Choose protection scope (production only, or all
-   deployments).
-3. Distribute the password out-of-band (1Password, secure email, etc.).
-
-Vercel rotates the protection cookie automatically; you can manually revoke
-all sessions by changing the password.
-
-### Option 3 (advanced): OIDC SSO
-
-Available on Vercel Enterprise. Lets you delegate auth to Google Workspace,
-Okta, Azure AD, etc. No code changes required on our side — configured in
-the Vercel dashboard. Use this if/when stakeholders need to use corporate SSO.
-
-### Verifying protection is active
+Initial deployment:
 
 ```bash
-curl -I https://<your-deployment>.vercel.app/
-# Should return 401 with a Set-Cookie for the Vercel auth challenge,
-# NOT 200 with the page contents.
+npm ci
+npm run build
+vercel deploy --prod
 ```
 
----
+For automated refreshes, use either:
 
-## Operations
+- `Dashboard Managed Scan` for UI-triggered suite execution and deployment
+- `Deploy Reports to Vercel` after the nightly validation artifact is available
 
-### Manual deploy
+## Domain setup
 
-GitHub UI → **Actions → Deploy Reports to Vercel → Run workflow**.
+1. Vercel project → Settings → Domains.
+2. Add the chosen internal dashboard domain.
+3. Apply the DNS record shown by Vercel.
+4. Add the final Google OAuth callback URL.
+5. Enable Vercel Deployment Protection as an additional perimeter control if desired.
 
-- **Scan profile**:
-    - `smoke` — fast smoke suite, ~5 min. Use to refresh stakeholder views
-      quickly during the day.
-    - `full` — full crawl + Lighthouse + PDF, ~30–60 min. Use when you need
-      parity with the nightly snapshot.
-- **Target**:
-    - `preview` — assigns a new preview URL. Use for testing changes to the
-      deploy infra itself.
-    - `production` — overwrites the production alias. Use for stakeholder-facing
-      updates.
-
-### Rollback
-
-Vercel keeps every deployment as an immutable URL. To revert to a previous
-report:
-
-1. Vercel dashboard → project → **Deployments**.
-2. Find the deployment you want to make current.
-3. Click **⋯ → Promote to Production**.
-
-The production alias swaps atomically; no rebuild needed.
-
-### Inspecting the latest deploy
+## Verification
 
 ```bash
-vercel ls --token=<token>          # list recent deployments
-vercel inspect <deployment-url> --token=<token>
+npm run typecheck
+npm run typecheck:dashboard
+npm run test:unit
+npm run build
 ```
 
-Or from the Actions summary — every deploy run prints the resulting URL in
-the workflow summary.
+Then verify:
 
-### Common failure modes
+- `/` loads KPI and chart data from the generated snapshot.
+- `/api/dashboard` returns the normalized snapshot.
+- `/api/artifacts/reports/executive-summary.pdf` opens.
+- Run Scan returns `202` when workflow variables are configured.
+- A non-QA/non-admin account receives `403` from scan execution.
+- The dashboard refreshes every 30 seconds.
 
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| Workflow skipped, no deploy | `workflow_run` upstream was a PR or failed | Expected — PR scans don't publish. Run manual deploy if needed. |
-| `vercel pull` fails with 401 | `VERCEL_TOKEN` invalid or expired | Regenerate token, update GitHub secret |
-| `vercel pull` fails with "no project" | `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` mismatch | Re-run `vercel link` locally, copy new IDs into GitHub secrets |
-| Landing page says "No reports available yet" | Upstream scan crashed before writing any HTML | Check upstream nightly run logs; the deploy still works so site stays reachable |
-| 401 in browser, but you're the reviewer | Not in Vercel team / wrong account | Operator adds you under Settings → Members |
-| Reports look stale | Browser cached an old deploy | Hard reload (Cmd-Shift-R / Ctrl-F5); production alias updates within seconds of deploy |
+## Rollback
 
-### Disabling auto-deploy temporarily
+Every Vercel deployment is immutable. In Vercel → Deployments, select a prior healthy deployment and choose Promote to Production.
 
-If you need to pause production publishes (e.g., during a known scan
-regression) without removing the workflow:
+## Troubleshooting
 
-```bash
-# In the deploy workflow file, set:
-#   if: false
-# at the job level. Commit and push. Re-enable later.
-```
-
-Or pause the workflow from GitHub UI → Actions → Deploy Reports to Vercel →
-"⋯" → Disable workflow.
-
----
-
-## Future Option B path
-
-The deployment is structured so a richer "Option B" portal (historical
-browsing, multiple snapshots, scan-trigger UI) can be added without
-re-architecting:
-
-1. **`manifest.json` is already published** at the site root with each
-   deploy. It carries `generatedAt`, git sha, scan type, list of available
-   reports, and the upstream CI run URL. A future Next.js portal can read
-   it client-side or server-side.
-2. **History preservation**: today the nightly artifact already includes
-   `reports/history/` (trend snapshots). When moving to Option B, route the
-   nightly artifact through Vercel Blob so multiple snapshots are accessible
-   instead of just "latest".
-3. **Promotion to a Next.js app**: drop a Next.js project into a `portal/`
-   sibling, set `outputDirectory` in `vercel.json` accordingly. The build
-   script can be reused as a portal data-source.
-4. **Triggering scans from the UI** would use the Vercel Workflow DevKit to
-   call `workflow_dispatch` on this repo's `deploy-reports.yml`.
-
-None of this needs to happen now. The current setup satisfies the stated
-acceptance criteria; promote when there's a demonstrated stakeholder need.
+| Symptom | Resolution |
+| --- | --- |
+| Dashboard snapshot missing | Run `npm run dashboard:prepare` or `npm run build` |
+| Run Scan says orchestration is not configured | Set `GITHUB_WORKFLOW_TOKEN` and `GITHUB_REPOSITORY` |
+| OAuth callback fails | Verify the exact production callback URI and `AUTH_SECRET` |
+| Evidence link returns 404 | Rebuild so the curated artifact set is regenerated |
+| Lighthouse shows unavailable | Run `npm run lighthouse`; the UI intentionally does not invent a score |
+| Revenue euro impact is unavailable | Connect complete sessions, AOV, and actual conversion data |

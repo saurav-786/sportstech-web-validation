@@ -5,6 +5,65 @@ AI-powered website validation platform built on Playwright + TypeScript. Two exe
 1. **Mega-scan** (`npm run scan`) — nightly: crawls the site and runs every validator on every page, then generates dashboards.
 2. **Tagged suites** (`npm run test:<suite>`) — focused, CI-friendly runs: smoke, seo, security, performance, a11y, visual.
 
+The repository also contains a Next.js 15 executive portal. It consumes the
+automation outputs without changing their test logic.
+
+## Executive dashboard architecture
+
+```mermaid
+flowchart TB
+  Suites["Playwright, Lighthouse, revenue and PDP suites"] --> Raw["reports/ and test-results/"]
+  Raw --> Normalizer["lib/dashboard/source-data.ts"]
+  Normalizer --> Snapshot["public/dashboard-snapshot.json"]
+  Normalizer --> Curated["Compressed public/artifacts subset"]
+  Snapshot --> Next["Next.js App Router dashboard"]
+  Curated --> Next
+  Next --> Users["Leadership, QA, Product, Support, Sales, Marketing"]
+  Users --> ScanAPI["POST /api/scans"]
+  ScanAPI --> Managed["Dashboard Managed Scan workflow"]
+  Managed --> Suites
+```
+
+### Dashboard module map
+
+```text
+app/                         App Router pages and API routes
+components/                  Executive UI, charts, gauges, tables and actions
+lib/dashboard/source-data.ts Build-time report normalization
+lib/dashboard/data.ts        Runtime compact snapshot/artifact reader
+auth.ts                      Auth.js v5 Google OAuth and role callbacks
+middleware.ts                Optional production authentication gate
+scripts/prepare-dashboard-assets.ts
+                             Snapshot generation and evidence compression
+.github/workflows/dashboard-scan.yml
+                             Long-running managed execution and redeployment
+```
+
+### Dashboard data flow
+
+1. Existing suites write structured reports and evidence.
+2. The preparation script calculates only traceable metrics from those files.
+3. Screenshots are compressed and a bounded stakeholder artifact set is copied
+   into `public/artifacts/`.
+4. Next.js reads the compact snapshot and auto-refreshes `/api/dashboard` every
+   30 seconds.
+5. Run Scan dispatches the existing npm scripts through GitHub Actions because
+   Playwright execution exceeds Vercel request limits.
+6. The workflow regenerates reports and deploys the refreshed snapshot.
+
+### Role model
+
+| Role | Intended access |
+| --- | --- |
+| Admin | Full dashboard, execution, reports, evidence, settings |
+| QA | Testing, AI RCA, reports, evidence |
+| Product | Analytics and reports |
+| Support | Support intelligence and evidence |
+| Sales | Executive and revenue analytics |
+| Marketing | Executive, SEO and reporting views |
+
+The scan API allows only Admin and QA when authentication is enabled.
+
 ## Module map
 
 ```
@@ -82,6 +141,18 @@ Suites are tagged in describe titles (`@smoke`, `@seo`, …). Filter with direct
 - **`src/reporting/release-readiness.ts`**: `determineReleaseReadiness` — deterministic gate. not-ready on any critical, health<80, security<85, stability<85, a broken checkout/login/cart/subscription journey, or a homepage/PLP load failure; ready only when no critical/high and health/stability/security all ≥90; otherwise ready-with-warning. Returns an explicit `blockers[]` list shown on the dashboard.
 - Wired in `src/reports/siteReport.ts`: health is now the weighted blend, the verdict comes from the deterministic gate (overriding the AI heuristic), and blockers render under the Executive Summary. Existing dashboard/history/pattern-detection (`dashboard.ts`, `history.ts`, `ai/analyzer.ts dedupeIssues`) are reused unchanged.
 - Unit tests: `npm run test:unit` (node:test via tsx) cover scoring bounds, weighting, critical penalty, repeated-pattern collapse, previous-run comparison, and every release-readiness rule, with fixtures for zero/low/critical/repeated/previous-run cases.
+
+## Revenue data integrity
+
+- Commerce funnel percentages are observed Playwright browser/device journey
+  success rates, not customer conversion rates.
+- Each run is isolated under `reports/revenue-runs/<run-id>/`; aggregators read
+  only that run so concurrent executions cannot contaminate results.
+- AOV, sessions, actual CR, baseline revenue, and euro-loss estimates are absent
+  unless a complete external dataset is explicitly connected by API, JSON, or
+  environment variables.
+- Automation journey-completion history is stored separately from business
+  conversion history and is never used for monetary deployment correlation.
 
 ## Sharing reports (Teams / email / wiki)
 

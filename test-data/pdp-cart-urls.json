@@ -1,0 +1,323 @@
+{
+  "generatedAt": "2026-06-22T07:11:44.491Z",
+  "source": "reports/pdp-discovery.json",
+  "count": 79,
+  "products": [
+    {
+      "url": "https://www.sportstech.de/laufband/stread-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/f75",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/f37s-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/f37s",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/stread-lite",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/f31s",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/stread-fold-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/woodpad-pro-hell",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/spad500",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/swalk-grau",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/sprorun",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/swalk-plus",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/swalk-lite",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/swalk-lite-plus",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/f10",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/laufband/walkmate",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/sbike-streadpro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/srow-streadpro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/sgympro-stread-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/aquaelite-stread-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/svibe-stread-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/hgx300-stread-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/sbike-lite-stread-lite",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/cx625-stread-fold-pro",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/cx700-stread-lite",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/prower-sprorun",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/swalk-prower",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/zubehoer/spulse",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/hanteln/ah100-2x1-5kg",
+      "category": "laufband"
+    },
+    {
+      "url": "https://www.sportstech.de/speedbike/sbike-10-1",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/speedbike/sbike",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/speedbike/sx175",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/ergometer/x150",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/speedbike/sbike-lite",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/speedbike/sx200",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/srow-sbike",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/hgx300-sbike",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/sgympro-sbike",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/svibe-sbike",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/sbike-lite-wrx1000",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/hanteln/ah150-40kg",
+      "category": "bikes-ergometer"
+    },
+    {
+      "url": "https://www.sportstech.de/rudergeraet/aqua-elite-hellbraun-21-5",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/rudergeraet/srow",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/rudergeraet/wrx1000-dunkelbraun",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/rudergeraet/wrx500",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/rudergeraet/prower-hellbraun",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/hgx300-srow",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/scross-srow",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/bundle/cx608-prower",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/zubehoer/bodenschutzmatte-gross",
+      "category": "rudergeraet"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/sgym-pro",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/smith-machine/sxm200",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/hgx300",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/hgx200",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/hgx150",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/hgx100",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/hgx50",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/rudergeraet/sgymrower",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hanteln/langhantel",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hantel/ironmate-24-kg",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/kraftstation/pt300",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hantelbank/brt500",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hantelbank/brt150",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hantelbank/sgym-bench",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hantelscheiben/wp100-2x-5kg",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hantelbank/brt200",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/hanteln/ah300-20kg",
+      "category": "krafttraining"
+    },
+    {
+      "url": "https://www.sportstech.de/crosstrainer/scross",
+      "category": "crosstrainer"
+    },
+    {
+      "url": "https://www.sportstech.de/crosstrainer/cx700",
+      "category": "crosstrainer"
+    },
+    {
+      "url": "https://www.sportstech.de/crosstrainer/cx625",
+      "category": "crosstrainer"
+    },
+    {
+      "url": "https://www.sportstech.de/crosstrainer/cx608",
+      "category": "crosstrainer"
+    },
+    {
+      "url": "https://www.sportstech.de/vibrationsplatte/svibe-lite-rot",
+      "category": "vibrationsplatte"
+    },
+    {
+      "url": "https://www.sportstech.de/vibrationsplatte/vp250-schwarz",
+      "category": "vibrationsplatte"
+    },
+    {
+      "url": "https://www.sportstech.de/vibrationsplatte/vp400",
+      "category": "vibrationsplatte"
+    },
+    {
+      "url": "https://www.sportstech.de/vibrationsplatte/vp500",
+      "category": "vibrationsplatte"
+    },
+    {
+      "url": "https://www.sportstech.de/zubehoer/bodenschutzmatte-mittel",
+      "category": "zubehoer"
+    },
+    {
+      "url": "https://www.sportstech.de/trampolin/htx100",
+      "category": "zubehoer"
+    },
+    {
+      "url": "https://www.sportstech.de/zubehoer/pulsgurt",
+      "category": "zubehoer"
+    },
+    {
+      "url": "https://www.sportstech.de/zubehoer/bs300-bodenschutzmatte",
+      "category": "zubehoer"
+    }
+  ]
+}
