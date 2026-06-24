@@ -22,11 +22,28 @@ export function WebsiteTestingView({ snapshot }: { snapshot: DashboardSnapshot }
   const [message, setMessage] = useState('');
 
   async function start(id: string) {
+    const label = suites.find((suite) => suite.id === id)?.label ?? 'Scan';
     setRunning(id);
-    const response = await fetch('/api/scans', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: id }) });
-    const body = await response.json();
-    setMessage(response.ok ? `${suites.find((suite) => suite.id === id)?.label} queued successfully.` : body.error);
-    setRunning(null);
+    setMessage('');
+    try {
+      const response = await fetch('/api/scans', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type: id }),
+      });
+      const body = await response.json().catch(() => ({} as { error?: string }));
+      if (response.ok) {
+        setMessage(`${label} queued successfully.`);
+      } else if (response.status === 401) {
+        setMessage('Your session has expired. Please sign in again to run scans.');
+      } else {
+        setMessage(body.error ?? `${label} could not be queued (HTTP ${response.status}).`);
+      }
+    } catch {
+      setMessage(`${label} could not be queued. Check your connection and try again.`);
+    } finally {
+      setRunning(null);
+    }
   }
 
   return (
