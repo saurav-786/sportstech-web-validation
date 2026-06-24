@@ -22,6 +22,7 @@ import { HeaderActions } from './header-actions';
 import { NotificationBell } from './notification-bell';
 import { ProfileMenu } from './profile-menu';
 import { ToastProvider } from './ui/toast';
+import { ScanRunnerProvider } from '@/lib/use-scan-runner';
 
 const nav = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,6 +48,7 @@ export function DashboardShell({
 
   return (
     <ToastProvider>
+    <ScanRunnerProvider>
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 h-[62px] border-b border-indigo-950/40 bg-gradient-to-r from-[#081748] via-[#11185a] to-[#111044] text-white shadow-[0_5px_18px_rgba(10,20,70,.16)]">
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 lg:px-5">
@@ -112,6 +114,7 @@ export function DashboardShell({
 
       <main className="mx-auto max-w-[1920px] p-3.5 lg:p-5">{children}</main>
     </div>
+    </ScanRunnerProvider>
     </ToastProvider>
   );
 }
