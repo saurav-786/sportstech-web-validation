@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { auth } from '@/auth';
 import { DashboardShell } from '@/components/dashboard-shell';
 import './globals.css';
@@ -17,6 +18,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body>
         <DashboardShell user={session?.user ?? null}>{children}</DashboardShell>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
