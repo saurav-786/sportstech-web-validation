@@ -8,6 +8,13 @@ export default auth((request) => {
     return NextResponse.next();
   }
 
+  // Already on the sign-in page (or its sub-paths) — let it render. Without
+  // this guard an unauthenticated request to /signin would be redirected to
+  // /signin again, causing an infinite redirect loop (ERR_TOO_MANY_REDIRECTS).
+  if (request.nextUrl.pathname === '/signin' || request.nextUrl.pathname.startsWith('/signin/')) {
+    return NextResponse.next();
+  }
+
   // Unauthenticated. For API routes return JSON (not an HTML redirect to
   // /signin) so client `fetch` callers always receive parseable JSON instead
   // of silently failing on response.json().
@@ -21,5 +28,5 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api/auth|signin|_next/static|_next/image|favicon.ico).*)'],
 };
