@@ -46,9 +46,18 @@ export interface Finding {
 export interface ReportItem {
   name: string;
   type: 'PDF' | 'HTML' | 'JSON' | 'CSV' | 'ZIP';
+  suite: string;
   path: string;
   modifiedAt: string;
   size: number;
+}
+
+export interface DashboardNotification {
+  id: string;
+  title: string;
+  detail?: string;
+  severity: 'critical' | 'warning' | 'info';
+  time: string;
 }
 
 export interface EvidenceItem {
@@ -72,6 +81,7 @@ export interface DashboardSnapshot {
   sourceGeneratedAt: string;
   dataFreshness: 'fresh' | 'stale';
   currentStatus: 'idle' | 'running' | 'failed' | 'completed';
+  hasData: boolean;
   kpis: KpiMetric[];
   scores: {
     websiteQuality: number | null;

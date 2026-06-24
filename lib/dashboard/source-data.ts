@@ -96,6 +96,22 @@ function normaliseEvidencePath(path?: string): string | undefined {
     : `reports/${clean}`;
 }
 
+function suiteOf(name: string): string {
+  const n = name.toLowerCase();
+  if (/a11y|accessib/.test(n)) return 'Accessibility';
+  if (/seo/.test(n)) return 'SEO';
+  if (/lighthouse|perf/.test(n)) return 'Performance';
+  if (/pdp|cart/.test(n)) return 'PDP & Cart';
+  if (/revenue|funnel/.test(n)) return 'Revenue';
+  if (/smoke/.test(n)) return 'Smoke';
+  if (/regression/.test(n)) return 'Regression';
+  if (/security/.test(n)) return 'Security';
+  if (/investigation|rca|root-cause/.test(n)) return 'Investigation';
+  if (/media/.test(n)) return 'Media';
+  if (/executive|summary|site-report|dashboard/.test(n)) return 'Executive';
+  return 'General';
+}
+
 async function reportInventory(): Promise<ReportItem[]> {
   const extensions = new Set(['.pdf', '.html', '.json', '.csv', '.zip']);
   const files = await walk(REPORTS, (path) => {
@@ -105,9 +121,11 @@ async function reportInventory(): Promise<ReportItem[]> {
   const items = await Promise.all(files.map(async (path) => {
     const info = await stat(path);
     const ext = extname(path).slice(1).toUpperCase() as ReportItem['type'];
+    const name = basename(path);
     return {
-      name: basename(path),
+      name,
       type: ext,
+      suite: suiteOf(name),
       path: relative(ROOT, path).replaceAll('\\', '/'),
       modifiedAt: info.mtime.toISOString(),
       size: info.size,
@@ -399,18 +417,34 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
     { key: 'revenue', label: 'Revenue Risk Pages', value: revenueRiskPages, display: display(revenueRiskPages), detail: 'Unique pages in quantified risk output', tone: revenueRiskPages ? 'warning' : 'positive' },
   ];
 
-  const insights = [
-    critical ? `${critical} critical issues are blocking release readiness.` : 'No critical release blockers detected.',
-    failedPdp ? `${failedPdp} product pages failed on at least one device profile.` : 'All tested PDPs passed the latest checks.',
-    revenueRisks[0]?.summary ? `Top revenue risk: ${revenueRisks[0].summary}` : 'No revenue-risk findings were produced.',
-    rca[0]?.rootCause ? `AI RCA: ${rca[0].rootCause}` : 'No RCA output is available for the latest run.',
-  ];
+  const hasData = Boolean(
+    pagesScanned || totalPdp || siteIssues.length || revenueRisks.length
+    || testsTotal || reports.length || rca.length || evidence.length,
+  );
+
+  const insights = hasData
+    ? [
+        critical
+          ? `${critical} critical issues are blocking release readiness.`
+          : siteIssues.length
+            ? 'No critical release blockers detected.'
+            : 'No issue analysis is available in the latest run.',
+        totalPdp
+          ? failedPdp
+            ? `${failedPdp} product pages failed on at least one device profile.`
+            : 'All tested PDPs passed the latest checks.'
+          : 'No PDP add-to-cart checks have run yet.',
+        revenueRisks[0]?.summary ? `Top revenue risk: ${revenueRisks[0].summary}` : 'No revenue-risk findings were produced.',
+        rca[0]?.rootCause ? `AI RCA: ${rca[0].rootCause}` : 'No RCA output is available for the latest run.',
+      ]
+    : ['No scan data available. Run a scan to generate results.'];
 
   return {
     generatedAt: new Date().toISOString(),
     sourceGeneratedAt: generatedAt,
     dataFreshness: ageMs <= 48 * 60 * 60 * 1000 ? 'fresh' : 'stale',
-    currentStatus: 'completed',
+    currentStatus: hasData ? 'completed' : 'idle',
+    hasData,
     kpis,
     scores: {
       websiteQuality: websiteHealth,

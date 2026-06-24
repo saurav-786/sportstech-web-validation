@@ -59,6 +59,18 @@ function ExecutionRow({ icon: Icon, label, value }: { icon: typeof Clock3; label
 
 export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   const [query, setQuery] = useState('');
+
+  if (!snapshot.hasData) {
+    return (
+      <Card className="grid place-items-center px-6 py-20 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600"><Sparkles size={26}/></div>
+        <h2 className="mt-5 text-lg font-bold text-slate-800">No scan data available</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Run a scan to generate results. Once a scan completes, KPIs, trends, findings, and reports will populate automatically.</p>
+        <a href="/website-testing" className="mt-5"><Button variant="primary"><ExternalLink size={14}/>Go to Website Testing</Button></a>
+      </Card>
+    );
+  }
+
   const findings = useMemo(() => {
     const search = query.trim().toLowerCase();
     if (!search) return snapshot.findings.slice(0, 8);

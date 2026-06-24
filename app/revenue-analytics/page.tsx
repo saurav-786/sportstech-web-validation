@@ -9,6 +9,18 @@ export const dynamic = 'force-dynamic';
 
 export default async function RevenueAnalyticsPage() {
   const snapshot = await getDashboardSnapshot();
+  if (!snapshot.hasData) {
+    return (
+      <>
+        <PageHeading title="Revenue Analytics" description="Purchase-funnel quality and revenue-risk intelligence."/>
+        <Card className="grid place-items-center px-6 py-20 text-center">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600"><CircleDollarSign size={26}/></div>
+          <h2 className="mt-5 text-lg font-bold text-slate-800">No scan data available</h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Run a scan to generate results. Revenue-risk findings and purchase-funnel quality will appear here once automation evidence is available.</p>
+        </Card>
+      </>
+    );
+  }
   return (
     <>
       <PageHeading title="Revenue Analytics" description="Purchase-funnel quality and revenue-risk intelligence. Monetary loss remains unavailable until a complete verified business dataset is connected."/>

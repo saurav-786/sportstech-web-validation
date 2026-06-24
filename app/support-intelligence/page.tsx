@@ -16,6 +16,18 @@ const families = [
 
 export default async function SupportIntelligencePage() {
   const snapshot = await getDashboardSnapshot();
+  if (!snapshot.hasData) {
+    return (
+      <>
+        <PageHeading title="Support Intelligence" description="Operational troubleshooting signals derived from current website findings."/>
+        <Card className="grid place-items-center px-6 py-20 text-center">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600"><Wrench size={26}/></div>
+          <h2 className="mt-5 text-lg font-bold text-slate-800">No scan data available</h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Run a scan to generate results. Findings will be classified into login, connectivity, mobile UI, device, and service-failure families once a scan completes.</p>
+        </Card>
+      </>
+    );
+  }
   return (
     <>
       <PageHeading title="Support Intelligence" description="Operational troubleshooting signals derived from current website findings. No separate customer-support knowledge-base artifact was found in the repository, so this page remains evidence-led."/>

@@ -1,8 +1,8 @@
 'use client';
 
 import { Accessibility, Activity, Braces, Gauge, LoaderCircle, Play, SearchCode, ShieldCheck, ShoppingCart } from 'lucide-react';
-import { useState } from 'react';
 import type { DashboardSnapshot } from '@/lib/dashboard/types';
+import { isScanActive, useScanRunner } from '@/lib/use-scan-runner';
 import { PageHeading } from './page-heading';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -18,50 +18,45 @@ const suites = [
 ];
 
 export function WebsiteTestingView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  const [running, setRunning] = useState<string | null>(null);
-  const [message, setMessage] = useState('');
-
-  async function start(id: string) {
-    const label = suites.find((suite) => suite.id === id)?.label ?? 'Scan';
-    setRunning(id);
-    setMessage('');
-    try {
-      const response = await fetch('/api/scans', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: id }),
-      });
-      const body = await response.json().catch(() => ({} as { error?: string }));
-      if (response.ok) {
-        setMessage(`${label} queued successfully.`);
-      } else if (response.status === 401) {
-        setMessage('Your session has expired. Please sign in again to run scans.');
-      } else {
-        setMessage(body.error ?? `${label} could not be queued (HTTP ${response.status}).`);
-      }
-    } catch {
-      setMessage(`${label} could not be queued. Check your connection and try again.`);
-    } finally {
-      setRunning(null);
-    }
-  }
+  const { scans, run } = useScanRunner();
 
   return (
     <>
       <PageHeading title="Website Testing" description="Launch the existing Playwright and Lighthouse automation without a terminal. Long-running jobs execute in the managed CI worker and publish fresh artifacts back to this dashboard."/>
-      {message && <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">{message}</div>}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {suites.map(({ id, label, icon: Icon, detail }) => (
-          <Card key={id} className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><Icon size={20}/></div>
-              <div className="min-w-0"><h2 className="text-sm font-bold text-slate-800">{label}</h2><p className="mt-1 min-h-10 text-[11px] leading-4 text-slate-500">{detail}</p></div>
-            </div>
-            <Button variant="primary" className="mt-4 w-full" onClick={() => start(id)} disabled={Boolean(running)}>
-              {running === id ? <LoaderCircle className="animate-spin" size={14}/> : <Play size={14}/>} Run suite
-            </Button>
-          </Card>
-        ))}
+        {suites.map(({ id, label, icon: Icon, detail }) => {
+          const state = scans[id];
+          const running = isScanActive(state);
+          const failed = state?.phase === 'failed' || state?.phase === 'error';
+          const done = state?.phase === 'completed';
+          return (
+            <Card key={id} className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><Icon size={20}/></div>
+                <div className="min-w-0"><h2 className="text-sm font-bold text-slate-800">{label}</h2><p className="mt-1 min-h-10 text-[11px] leading-4 text-slate-500">{detail}</p></div>
+              </div>
+              <Button variant="primary" className="mt-4 w-full" onClick={() => run(id)} disabled={running}>
+                {running ? <LoaderCircle className="animate-spin" size={14}/> : <Play size={14}/>} {running ? 'Running…' : 'Run suite'}
+              </Button>
+              {state && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[10px] font-semibold">
+                    <span className={failed ? 'text-red-600' : done ? 'text-emerald-600' : 'text-indigo-600'}>
+                      {state.phase === 'error' ? (state.error ?? 'Failed') : state.stage}
+                    </span>
+                    <span className="text-slate-400">{Math.round(state.progress)}%</span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${failed ? 'bg-red-500' : done ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${Math.max(3, Math.min(100, state.progress))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
       <Card className="mt-4 overflow-hidden">
         <div className="border-b border-slate-200 px-4 py-3"><h2 className="panel-title">Latest PDP Device Matrix</h2><p className="mt-0.5 text-[10px] text-slate-500">Real results from the latest fast PDP/cart summary.</p></div>

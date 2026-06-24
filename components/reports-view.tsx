@@ -23,9 +23,12 @@ export function ReportsView({ reports }: { reports: ReportItem[] }) {
           <select value={type} onChange={(e) => setType(e.target.value)} className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-600">{['All', 'PDF', 'HTML', 'JSON', 'CSV', 'ZIP'].map((value) => <option key={value}>{value}</option>)}</select>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-xs">
-            <thead className="bg-slate-50 text-[10px] text-slate-500"><tr><th className="px-4 py-2.5">Report</th><th className="px-4 py-2.5">Type</th><th className="px-4 py-2.5">Generated</th><th className="px-4 py-2.5">Size</th><th className="px-4 py-2.5 text-right">Actions</th></tr></thead>
-            <tbody>{filtered.map((item) => <tr key={item.path} className="border-t border-slate-100"><td className="px-4 py-3 font-semibold text-slate-700">{item.name}</td><td className="px-4 py-3"><span className="rounded bg-indigo-50 px-2 py-1 text-[9px] font-bold text-indigo-700">{item.type}</span></td><td className="px-4 py-3 text-slate-500">{formatDate(item.modifiedAt)}</td><td className="px-4 py-3 text-slate-500">{formatBytes(item.size)}</td><td className="px-4 py-3"><div className="flex justify-end gap-2"><a href={`/api/artifacts/${item.path}`} target="_blank"><Button size="sm"><ExternalLink size={12}/>Open</Button></a><a href={`/api/artifacts/${item.path}?download=1`}><Button size="sm"><Download size={12}/>Download</Button></a></div></td></tr>)}</tbody>
+          <table className="w-full min-w-[820px] text-left text-xs">
+            <thead className="bg-slate-50 text-[10px] text-slate-500"><tr><th className="px-4 py-2.5">Report</th><th className="px-4 py-2.5">Suite</th><th className="px-4 py-2.5">Type</th><th className="px-4 py-2.5">Generated</th><th className="px-4 py-2.5">Size</th><th className="px-4 py-2.5 text-right">Actions</th></tr></thead>
+            <tbody>
+              {filtered.map((item) => <tr key={item.path} className="border-t border-slate-100"><td className="px-4 py-3 font-semibold text-slate-700">{item.name}</td><td className="px-4 py-3 text-slate-500">{item.suite}</td><td className="px-4 py-3"><span className="rounded bg-indigo-50 px-2 py-1 text-[9px] font-bold text-indigo-700">{item.type}</span></td><td className="px-4 py-3 text-slate-500">{formatDate(item.modifiedAt)}</td><td className="px-4 py-3 text-slate-500">{formatBytes(item.size)}</td><td className="px-4 py-3"><div className="flex justify-end gap-2"><a href={`/api/artifacts/${item.path}`} target="_blank"><Button size="sm"><ExternalLink size={12}/>View</Button></a><a href={`/api/artifacts/${item.path}?download=1`}><Button size="sm"><Download size={12}/>Download {item.type}</Button></a></div></td></tr>)}
+              {!filtered.length && <tr><td colSpan={6} className="px-4 py-16 text-center text-xs text-slate-400">{reports.length ? 'No reports match this filter.' : 'No reports yet. Run a scan to generate reports.'}</td></tr>}
+            </tbody>
           </table>
         </div>
       </Card>

@@ -9,6 +9,22 @@ export const dynamic = 'force-dynamic';
 
 export default async function AiRcaPage() {
   const snapshot = await getDashboardSnapshot();
+  const rcaFindings = snapshot.findings.filter((item) => item.confidence || item.rootCause);
+  const hasRca = snapshot.rcaDistribution.length > 0 || rcaFindings.length > 0;
+
+  if (!hasRca) {
+    return (
+      <>
+        <PageHeading title="AI Root Cause Analysis" description="Evidence-grounded classifications from the deterministic analyzer and optional AI provider."/>
+        <Card className="grid place-items-center px-6 py-20 text-center">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-violet-50 text-violet-600"><Bot size={26}/></div>
+          <h2 className="mt-5 text-lg font-bold text-slate-800">No RCA data available yet</h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Run a scan to generate RCA insights. Root-cause classifications and recommendations will appear here once a scan produces findings.</p>
+        </Card>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeading title="AI Root Cause Analysis" description="Evidence-grounded classifications from the deterministic analyzer and optional AI provider. Confidence and recommendations are preserved from source artifacts."/>

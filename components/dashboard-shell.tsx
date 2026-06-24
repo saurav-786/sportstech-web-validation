@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Bell,
   Bot,
   ChartNoAxesCombined,
   FileText,
@@ -20,6 +19,9 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState, type ReactNode } from 'react';
 import { BrandMark } from './brand-mark';
 import { HeaderActions } from './header-actions';
+import { NotificationBell } from './notification-bell';
+import { ProfileMenu } from './profile-menu';
+import { ToastProvider } from './ui/toast';
 
 const nav = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,6 +46,7 @@ export function DashboardShell({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
+    <ToastProvider>
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 h-[62px] border-b border-indigo-950/40 bg-gradient-to-r from-[#081748] via-[#11185a] to-[#111044] text-white shadow-[0_5px_18px_rgba(10,20,70,.16)]">
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 lg:px-5">
@@ -81,16 +84,9 @@ export function DashboardShell({
             </DropdownMenu.Root>
           </nav>
           <HeaderActions />
-          <div className="hidden items-center gap-2 border-l border-white/15 pl-3 sm:flex">
-            <div className="relative"><Bell size={18}/><span className="absolute -right-1.5 -top-1.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold">3</span></div>
-            {user?.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt="" className="h-8 w-8 rounded-full border-2 border-white/80 object-cover" />
-            ) : (
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-white text-[11px] font-extrabold text-indigo-800">
-                {(user?.name ?? 'ST').split(' ').map((part) => part[0]).join('').slice(0, 2)}
-              </div>
-            )}
+          <div className="flex items-center gap-2.5 border-l border-white/15 pl-3">
+            <NotificationBell />
+            <ProfileMenu user={user} />
           </div>
         </div>
       </header>
@@ -116,5 +112,6 @@ export function DashboardShell({
 
       <main className="mx-auto max-w-[1920px] p-3.5 lg:p-5">{children}</main>
     </div>
+    </ToastProvider>
   );
 }

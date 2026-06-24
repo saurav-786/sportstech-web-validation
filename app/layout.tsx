@@ -13,10 +13,20 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
+  const authRequired = process.env.DASHBOARD_AUTH_REQUIRED === 'true';
+  // When authentication is enforced and the visitor is not signed in, the only
+  // reachable route is the sign-in screen (middleware redirects everything
+  // else). Render it bare so no authenticated chrome — top nav, Run Scan,
+  // Generate Report, notifications, profile — appears above the login screen.
+  const showShell = !authRequired || Boolean(session?.user);
   return (
     <html lang="en">
       <body>
-        <DashboardShell user={session?.user ?? null}>{children}</DashboardShell>
+        {showShell ? (
+          <DashboardShell user={session?.user ?? null}>{children}</DashboardShell>
+        ) : (
+          children
+        )}
         <Analytics />
         <SpeedInsights />
       </body>
