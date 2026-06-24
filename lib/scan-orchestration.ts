@@ -81,6 +81,26 @@ function stageForStep(name?: string): string {
   return 'Running';
 }
 
+/**
+ * Explains a non-success run by naming the step that broke. A `timed_out`
+ * conclusion (the scan exceeded the workflow's timeout — common for slow,
+ * large crawls) and a `cancelled` conclusion are reported distinctly so the
+ * fix is obvious from the dashboard alone.
+ */
+async function failureReason(config: ScanConfig, runId: string, conclusion?: string | null): Promise<string> {
+  if (conclusion === 'timed_out') return 'Failed: job timed out';
+  if (conclusion === 'cancelled') return 'Cancelled';
+  const jobsResponse = await gh(config, `/actions/runs/${runId}/jobs`).catch(() => null);
+  const jobs = jobsResponse?.ok ? await jobsResponse.json().catch(() => null) : null;
+  const steps: Array<{ name?: string; status?: string; conclusion?: string | null }> = jobs?.jobs?.[0]?.steps ?? [];
+  const failed = steps.find((step) => step.conclusion === 'failure' || step.conclusion === 'timed_out');
+  if (failed?.name) {
+    const verb = failed.conclusion === 'timed_out' ? 'timed out' : 'failed';
+    return `Failed: ${failed.name} ${verb}`;
+  }
+  return conclusion ? `Failed (${conclusion})` : 'Failed';
+}
+
 /** Maps a GitHub Actions run (and its job steps) to a dashboard scan status. */
 export async function getScanStatus(config: ScanConfig, runId: string): Promise<ScanStatus | null> {
   const runResponse = await gh(config, `/actions/runs/${runId}`).catch(() => null);
@@ -89,13 +109,15 @@ export async function getScanStatus(config: ScanConfig, runId: string): Promise<
   if (!run) return null;
 
   if (run.status === 'completed') {
-    const success = run.conclusion === 'success';
-    return {
-      phase: success ? 'completed' : 'failed',
-      stage: success ? 'Completed' : 'Failed',
-      progress: 100,
-      conclusion: run.conclusion,
-    };
+    if (run.conclusion === 'success') {
+      return { phase: 'completed', stage: 'Completed', progress: 100, conclusion: run.conclusion };
+    }
+    // Non-success: pinpoint *why* so the dashboard shows an actionable reason
+    // instead of a bare "Failed". The scan/report steps run under `set +e` and
+    // exit 0, so a failure here is a pipeline problem (npm ci, Playwright
+    // install, Vercel publish) or a job timeout — not SEO defects.
+    const reason = await failureReason(config, runId, run.conclusion);
+    return { phase: 'failed', stage: reason, progress: 100, conclusion: run.conclusion };
   }
 
   if (['queued', 'pending', 'waiting', 'requested'].includes(run.status)) {

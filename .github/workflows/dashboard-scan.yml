@@ -37,16 +37,22 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - id: checkout
+        uses: actions/checkout@v4
+      - id: setup_node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - name: Install browser runtime
+      - id: npm_ci
+        name: Install dependencies
+        run: npm ci
+      - id: playwright
+        name: Install browser runtime
         run: npx playwright install --with-deps
 
-      - name: Execute selected profile
+      - id: scan
+        name: Execute selected profile
         shell: bash
         run: |
           set +e
@@ -67,7 +73,8 @@ jobs:
           echo "SCAN_EXIT_CODE=$scan_code" >> "$GITHUB_ENV"
           exit 0
 
-      - uses: actions/upload-artifact@v4
+      - id: upload
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dashboard-latest-reports
@@ -76,10 +83,12 @@ jobs:
             test-results
           retention-days: 90
 
-      - name: Install Vercel CLI
+      - id: vercel_cli
+        name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Publish refreshed dashboard
+      - id: publish
+        name: Publish refreshed dashboard
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -91,11 +100,42 @@ jobs:
 
       - name: Execution summary
         if: always()
+        env:
+          # Booleans only — secret *values* are never exposed.
+          HAS_ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_OPENAI_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
+          HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
+          HAS_VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID != '' }}
+          HAS_VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID != '' }}
         run: |
           {
             echo "## Dashboard scan"
             echo ""
             echo "- Profile: \`${{ inputs.scan_type }}\`"
-            echo "- Automation exit code: \`${SCAN_EXIT_CODE:-unknown}\`"
-            echo "- Reports were preserved and published even when validation found defects."
+            echo "- Scan automation exit code: \`${SCAN_EXIT_CODE:-unknown}\` (non-zero = validation found defects; this does NOT fail the job)"
+            echo ""
+            echo "### Step outcomes (the culprit is whichever shows \`failure\`)"
+            echo ""
+            echo "| Step | Outcome |"
+            echo "| --- | --- |"
+            echo "| Checkout | \`${{ steps.checkout.outcome }}\` |"
+            echo "| Setup Node | \`${{ steps.setup_node.outcome }}\` |"
+            echo "| Install dependencies (npm ci) | \`${{ steps.npm_ci.outcome }}\` |"
+            echo "| Install browser runtime | \`${{ steps.playwright.outcome }}\` |"
+            echo "| Execute selected profile | \`${{ steps.scan.outcome }}\` |"
+            echo "| Upload artifacts | \`${{ steps.upload.outcome }}\` |"
+            echo "| Install Vercel CLI | \`${{ steps.vercel_cli.outcome }}\` |"
+            echo "| Publish refreshed dashboard | \`${{ steps.publish.outcome }}\` |"
+            echo ""
+            echo "### Secret presence (a missing secret is the usual cause of a Publish failure)"
+            echo ""
+            echo "| Secret | Present |"
+            echo "| --- | --- |"
+            echo "| ANTHROPIC_API_KEY | \`${HAS_ANTHROPIC_KEY}\` |"
+            echo "| OPENAI_API_KEY | \`${HAS_OPENAI_KEY}\` |"
+            echo "| VERCEL_TOKEN | \`${HAS_VERCEL_TOKEN}\` |"
+            echo "| VERCEL_ORG_ID | \`${HAS_VERCEL_ORG_ID}\` |"
+            echo "| VERCEL_PROJECT_ID | \`${HAS_VERCEL_PROJECT_ID}\` |"
+            echo ""
+            echo "_Reports are preserved and uploaded even when validation finds defects._"
           } >> "$GITHUB_STEP_SUMMARY"
